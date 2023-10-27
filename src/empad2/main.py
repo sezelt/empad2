@@ -15,7 +15,7 @@ def load_dataset():
 ##############################################################
 
 # Since only one sensor exists at the moment I won't worry about how to handle different calibration files!
-calibration_path = Path(__file__).parent.parent / "calibration_data" / "SENSOR_001"
+calibration_path = Path(__file__).parent / "calibration_data" / "SENSOR_001"
 cal_names = ["G1A", "G2A", "G1B", "G2B", "FFA", "FFB", "B2A", "B2B"]
 _G1A, _G2A, _G1B, _G2B, _FFA, _FFB, _B2A, _B2B = [
     np.fromfile(
