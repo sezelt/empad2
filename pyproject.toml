@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "empad2"
+version = "0.9"
+authors = [
+  { name="Steven Zeltmann", email="steven.zeltmann@cornell.edu" },
+]
+description = "Reader for raw files produced by EMPAD-G2"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "py4dstem >= 0.14.8",
+  "numpy >= 1.19",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/sezelt/empad2"
+"Bug Tracker" = "https://github.com/sezelt/empad2/issues"
