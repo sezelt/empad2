@@ -13,7 +13,8 @@ pip install git+https://github.com/sezelt/empad2
 ## Usage
 Loading an EMPAD2 dataset requires two `.raw` files, one for the background, and one for the experiment, plus a number of calibration files. 
 
-First, load the calibration files by specifying the location:
+At the moment, the calibration files for the one existing sensor are packaged with the repo and do not need to be explicitly loaded. This may change in the future. 
+~~First, load the calibration files by specifying the location:~~
 ```python
 import empad2
 
@@ -21,7 +22,7 @@ empad2.load_calibrations("/path/to/folder/with/calibrations/")
 
 # 
 ```
-`empad2` attempts to detect the correct calibration files in the directory specified, but if the file names are too ambiguous then an error will be raised and you will have to speficy the files manually
+~~`empad2` attempts to detect the correct calibration files in the directory specified, but if the file names are too ambiguous then an error will be raised and you will have to speficy the files manually~~
 
 Then, load the background data:
 ```python

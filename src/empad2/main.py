@@ -5,12 +5,17 @@ from pathlib import Path
 
 __all__ = ["load_background", "load_dataset"]
 
+def load_calibrations():
+    raise NotImplementedError("Calibrations for the Cornell cryo-Themis have been automatically loaded. Support for other sensors will be added in the future. ")
 
-def load_background():
-    pass
+def load_background(filepath, scan_size=None):
+    bg_data = _load_EMPAD2_datacube(filepath, scan_size=scan_size)
+    background_odd = np.mean(bg_data.data[:,::2],axis=(0,1))
+    background_even = np.mean(bg_data.data[:,1::2],axis=(0,1))
+    return {'even': background_even, 'odd': background_odd}
 
-def load_dataset():
-    pass
+def load_dataset(filepath:str, background:dict, scan_size=None, ):
+    return _load_EMPAD2_datacube(filepath, scan_size, background_even=background['even'], background_odd=background['odd'])
 
 ##############################################################
 
