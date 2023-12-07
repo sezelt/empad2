@@ -43,7 +43,9 @@ def load_calibration_data(
         sensor_name = sensor.lower()
         if sensor_name == "cryo-titan":
             with h5py.File(
-                Path(__file__).resolve().parent / "calibration_data" / "cryo-titan-calibrations.h5"
+                Path(__file__).resolve().parent
+                / "calibration_data"
+                / "cryo-titan-calibrations.h5"
             ) as cal_file:
                 data = {
                     "G1A": cal_file["G1A"][()],
@@ -58,7 +60,9 @@ def load_calibration_data(
                 cal_method = processing_methods["linear"]
         elif sensor_name == "andromeda":
             with h5py.File(
-                Path(__file__).resolve().parent / "calibration_data" / "andromeda-calibrations.h5"
+                Path(__file__).resolve().parent
+                / "calibration_data"
+                / "andromeda-calibrations.h5"
             ) as cal_file:
                 data = {
                     "Ml": cal_file["Ml"][()],
