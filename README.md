@@ -14,28 +14,27 @@ pip install git+https://github.com/sezelt/empad2
 Loading an EMPAD2 dataset requires two `.raw` files, one for the background, and one for the experiment, plus a number of calibration files. 
 
 At the moment, the calibration files for the one existing sensor are packaged with the repo and do not need to be explicitly loaded. This may change in the future. 
-~~First, load the calibration files by specifying the location:~~
+First, load the calibration files for your sensor (`"cryo-titan"` or `"andromeda"` are included with the package):
 ```python
 import empad2
 
-empad2.load_calibrations("/path/to/folder/with/calibrations/")
+calibrations = empad2.load_calibrations("andromeda")
 
 # 
 ```
-~~`empad2` attempts to detect the correct calibration files in the directory specified, but if the file names are too ambiguous then an error will be raised and you will have to speficy the files manually~~
 
 Then, load the background data:
 ```python
-background = empad2.load_background("/path/to/background/file.raw")
+background = empad2.load_background("/path/to/background/file.raw", calibration_data=calibrations)
 ```
 
 Then use the background to import experimental datasets:
 ```python
-dataset = empad2.load_dataset("/path/to/experiment.raw", background)
+dataset = empad2.load_dataset("/path/to/experiment.raw", background, calibrations)
 ```
-If the scan region is square or if the `xml` metadata file is present, the shape is automatically detected. If the shape cannot be detected, specify it manually:
+If the scan region is square, the shape is automatically detected. If the shape cannot be detected, specify it manually:
 ```python
-dataset = empad2.load_dataset("/path/to/experiment.raw", background, shape=(256,256))
+dataset = empad2.load_dataset("/path/to/experiment.raw", background, calibrations, shape=(256,256))
 ```
 
 

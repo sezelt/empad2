@@ -3,16 +3,21 @@ import numpy as np
 import os
 from pathlib import Path
 import h5py
-from typing import Optional
+from typing import Callable, Optional
+from typing_extensions import TypedDict
 
 __all__ = ["load_calibration_data", "load_background", "load_dataset"]
+
+CalibrationSet = TypedDict(
+    "CalibrationSet", {"data": dict[str, np.ndarray], "method": Callable}
+)
 
 
 def load_calibration_data(
     sensor: Optional[str] = None,
     filepath: Optional[str | Path] = None,
     method: Optional[str] = None,
-):
+) -> CalibrationSet:
     """
     Import calibration data for the sensor. Can be called in two ways:
 
@@ -35,7 +40,7 @@ def load_calibration_data(
 
     if sensor is not None:
         # load a bundled sensor
-        sensor_name = sensor.lower():
+        sensor_name = sensor.lower()
         if sensor_name == "cryo-titan":
             with h5py.File(
                 Path(__file__) / "calibration_data" / "cryo-titan-calibrations.h5"
@@ -71,18 +76,20 @@ def load_calibration_data(
     elif filepath is not None and method is not None:
         # read any arrays in the file
         with h5py.File(filepath) as cal_file:
-            data = { k:cal_file[k][()] for k in cal_file.keys() }
+            data = {k: cal_file[k][()] for k in cal_file.keys()}
 
         cal_method = processing_methods[method]
 
     else:
         raise ValueError("Either sensor name or path and method must be specified.")
 
-    return {'data': data, "method": cal_method}
+    return {"data": data, "method": cal_method}
 
 
 def load_background(filepath, calibration_data: dict, scan_size=None):
-    bg_data = _load_EMPAD2_datacube(filepath, calibration_data=calibration_data, scan_size=scan_size)
+    bg_data = _load_EMPAD2_datacube(
+        filepath, calibration_data=calibration_data, scan_size=scan_size
+    )
     background_odd = np.mean(bg_data.data[:, ::2], axis=(0, 1))
     background_even = np.mean(bg_data.data[:, 1::2], axis=(0, 1))
     return {"even": background_even, "odd": background_odd}
@@ -91,12 +98,13 @@ def load_background(filepath, calibration_data: dict, scan_size=None):
 def load_dataset(
     filepath: str,
     background: dict,
-    calibration_data: dict,
+    calibration_data: CalibrationSet,
     scan_size=None,
 ):
     return _load_EMPAD2_datacube(
         filepath,
-        scan_size,
+        calibration_data=calibration_data,
+        scan_size=scan_size,
         background_even=background["even"],
         background_odd=background["odd"],
     )
@@ -143,7 +151,7 @@ def _debounce_frame(frame, fit_range=5):
 
 def _process_EMPAD2_datacube_linear(
     datacube: py4DSTEM.DataCube,
-    calibration_data: dict,
+    calibration_data: CalibrationSet,
     background_even=None,
     background_odd=None,
 ) -> None:
@@ -199,7 +207,7 @@ def _process_EMPAD2_datacube_linear(
 
 def _process_EMPAD2_datacube_quadratic(
     datacube: py4DSTEM.DataCube,
-    calibration_data: dict,
+    calibration_data: CalibrationSet,
     background_even=None,
     background_odd=None,
 ) -> None:
@@ -247,7 +255,7 @@ def _process_EMPAD2_datacube_quadratic(
 
 def _load_EMPAD2_datacube(
     filepath,
-    calibration_data:dict,
+    calibration_data: CalibrationSet,
     scan_size=None,
     background_even=None,
     background_odd=None,
@@ -271,6 +279,8 @@ def _load_EMPAD2_datacube(
         datacube = py4DSTEM.DataCube(np.fromfile(fid, np.float32).reshape(data_shape))
 
     # Call the correct calibration method, as determined by the calibration dict
-    calibration_data['method'](datacube, calibration_data background_even, background_odd)
+    calibration_data["method"](
+        datacube, calibration_data, background_even, background_odd
+    )
 
     return datacube
