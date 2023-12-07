@@ -43,7 +43,7 @@ def load_calibration_data(
         sensor_name = sensor.lower()
         if sensor_name == "cryo-titan":
             with h5py.File(
-                Path(__file__) / "calibration_data" / "cryo-titan-calibrations.h5"
+                Path(__file__).resolve().parent / "calibration_data" / "cryo-titan-calibrations.h5"
             ) as cal_file:
                 data = {
                     "G1A": cal_file["G1A"][()],
@@ -58,16 +58,16 @@ def load_calibration_data(
                 cal_method = processing_methods["linear"]
         elif sensor_name == "andromeda":
             with h5py.File(
-                Path(__file__) / "calibration_data" / "andromeda-calibrations.h5"
+                Path(__file__).resolve().parent / "calibration_data" / "andromeda-calibrations.h5"
             ) as cal_file:
                 data = {
-                    "Ml": cal_file["ml"][()],
+                    "Ml": cal_file["Ml"][()],
                     "alpha": cal_file["alpha"][()],
                     "Md": cal_file["Md"][()],
                     "Oh": cal_file["Oh"][()],
                     "Ot": cal_file["Ot"][()],
-                    "_FFA": cal_file["FFA"][()],
-                    "_FFB": cal_file["FFB"][()],
+                    "FFA": cal_file["FFA"][()],
+                    "FFB": cal_file["FFB"][()],
                 }
                 cal_method = processing_methods["quadratic"]
 
@@ -211,7 +211,7 @@ def _process_EMPAD2_datacube_quadratic(
     background_even=None,
     background_odd=None,
 ) -> None:
-    Ml = calibration_data["data"]["ml"]
+    Ml = calibration_data["data"]["Ml"]
     alpha = calibration_data["data"]["alpha"]
     Md = calibration_data["data"]["Md"]
     Oh = calibration_data["data"]["Oh"]
