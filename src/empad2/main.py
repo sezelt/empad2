@@ -6,11 +6,31 @@ import h5py
 from typing import Callable, Optional
 from typing_extensions import TypedDict
 
-__all__ = ["load_calibration_data", "load_background", "load_dataset"]
+__all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS"]
 
 CalibrationSet = TypedDict(
     "CalibrationSet", {"data": dict[str, np.ndarray], "method": Callable}
 )
+BackgroundSet = TypedDict("BackgroundSet", {"even": np.ndarray, "odd": np.ndarray})
+
+SENSORS = {
+    "cryo-titan": {
+        "display-name": "Cryo Titan",
+        "data-path": Path(__file__).resolve().parent
+        / "calibration_data"
+        / "cryo-titan-calibrations.h5",
+        "method": "linear",
+        "dataset-names": ["G1A", "G2A", "G1B", "G2B", "B2A", "B2B", "FFA", "FFB"],
+    },
+    "andromeda": {
+        "display-name": "Andromeda",
+        "data-path": Path(__file__).resolve().parent
+        / "calibration_data"
+        / "andromeda-calibrations.h5",
+        "method": "quadratic",
+        "dataset-names": ["Ml", "alpha", "Md", "Ot", "Oh", "FFA", "FFB"],
+    },
+}
 
 
 def load_calibration_data(
@@ -38,49 +58,28 @@ def load_calibration_data(
         "quadratic": _process_EMPAD2_datacube_quadratic,
     }
 
+    _constant_names = {
+        "linear": ["G1A", "G2A", "G1B", "G2B", "B2A", "B2B", "FFA", "FFB"],
+        "quadratic": ["Ml", "alpha", "Md", "Ot", "Oh", "FFA", "FFB"],
+    }
+
     if sensor is not None:
         # load a bundled sensor
         sensor_name = sensor.lower()
-        if sensor_name == "cryo-titan":
-            with h5py.File(
-                Path(__file__).resolve().parent
-                / "calibration_data"
-                / "cryo-titan-calibrations.h5"
-            ) as cal_file:
-                data = {
-                    "G1A": cal_file["G1A"][()],
-                    "G2A": cal_file["G2A"][()],
-                    "G1B": cal_file["G1B"][()],
-                    "G2B": cal_file["G2B"][()],
-                    "B2A": cal_file["B2A"][()],
-                    "B2B": cal_file["B2B"][()],
-                    "FFA": cal_file["FFA"][()],
-                    "FFB": cal_file["FFB"][()],
-                }
-                cal_method = processing_methods["linear"]
-        elif sensor_name == "andromeda":
-            with h5py.File(
-                Path(__file__).resolve().parent
-                / "calibration_data"
-                / "andromeda-calibrations.h5"
-            ) as cal_file:
-                data = {
-                    "Ml": cal_file["Ml"][()],
-                    "alpha": cal_file["alpha"][()],
-                    "Md": cal_file["Md"][()],
-                    "Oh": cal_file["Oh"][()],
-                    "Ot": cal_file["Ot"][()],
-                    "FFA": cal_file["FFA"][()],
-                    "FFB": cal_file["FFB"][()],
-                }
-                cal_method = processing_methods["quadratic"]
+        if sensor_name in SENSORS.keys():
+            sensor_data = SENSORS[sensor_name]
+            with h5py.File(sensor_data["data-path"]) as cal_file:
+                data = {k: np.array(cal_file[k]) for k in sensor_data["dataset-names"]}
+                cal_method = processing_methods[sensor_data["method"]]
 
         else:
-            raise ValueError("Sensor name not recognized")
+            raise ValueError(
+                f"Sensor name not recognized. Bundled sensors are {[s['display-name'] for s in SENSORS.values()]}"
+            )
     elif filepath is not None and method is not None:
         # read any arrays in the file
         with h5py.File(filepath) as cal_file:
-            data = {k: cal_file[k][()] for k in cal_file.keys()}
+            data = {k: np.array(cal_file[k]) for k in _constant_names[method]}
 
         cal_method = processing_methods[method]
 
@@ -90,7 +89,11 @@ def load_calibration_data(
     return {"data": data, "method": cal_method}
 
 
-def load_background(filepath, calibration_data: dict, scan_size=None):
+def load_background(
+    filepath,
+    calibration_data: CalibrationSet,
+    scan_size=None,
+) -> BackgroundSet:
     bg_data = _load_EMPAD2_datacube(
         filepath, calibration_data=calibration_data, scan_size=scan_size
     )
@@ -101,7 +104,7 @@ def load_background(filepath, calibration_data: dict, scan_size=None):
 
 def load_dataset(
     filepath: str,
-    background: dict,
+    background: BackgroundSet,
     calibration_data: CalibrationSet,
     scan_size=None,
 ):
