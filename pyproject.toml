@@ -31,4 +31,4 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-empad2 = ["*.h5"]
+empad2 = ["calibration_data/*.h5"]
