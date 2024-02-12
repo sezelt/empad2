@@ -107,13 +107,15 @@ def load_dataset(
     background: BackgroundSet,
     calibration_data: CalibrationSet,
     scan_size=None,
-):
+    _tqdm_args={},
+) -> py4DSTEM.DataCube:
     return _load_EMPAD2_datacube(
         filepath,
         calibration_data=calibration_data,
         scan_size=scan_size,
         background_even=background["even"],
         background_odd=background["odd"],
+        _tqdm_args=_tqdm_args,
     )
 
 
@@ -161,6 +163,7 @@ def _process_EMPAD2_datacube_linear(
     calibration_data: CalibrationSet,
     background_even=None,
     background_odd=None,
+    _tqdm_args={},
 ) -> None:
     # get calibration data from file
     _G1A = calibration_data["data"]["G1A"]
@@ -178,7 +181,7 @@ def _process_EMPAD2_datacube_linear(
     background = background_even is not None and background_odd is not None
 
     # apply calibration to each pattern
-    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1]):
+    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args):
         data = datacube.data[rx, ry].view(np.uint32)
         analog = np.bitwise_and(data, 0x3FFF).astype(np.float32)
         digital = np.right_shift(np.bitwise_and(data, 0x3FFFC000), 14).astype(
@@ -217,6 +220,7 @@ def _process_EMPAD2_datacube_quadratic(
     calibration_data: CalibrationSet,
     background_even=None,
     background_odd=None,
+    _tqdm_args={},
 ) -> None:
     Ml = calibration_data["data"]["Ml"]
     alpha = calibration_data["data"]["alpha"]
@@ -232,7 +236,7 @@ def _process_EMPAD2_datacube_quadratic(
     background = background_even is not None and background_odd is not None
 
     # apply calibration to each pattern
-    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1]):
+    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args):
         data = datacube.data[rx, ry].view(np.uint32)
         analog = np.bitwise_and(data, 0x3FFF).astype(np.float32)
         digital = np.right_shift(np.bitwise_and(data, 0x3FFFC000), 14).astype(
@@ -240,10 +244,11 @@ def _process_EMPAD2_datacube_quadratic(
         )
         gain_bit = np.right_shift(np.bitwise_and(data, 0x80000000), 31)
 
+        analog_x_gain_bit = analog * gain_bit
         datacube.data[rx, ry] = (
             analog * (1 - gain_bit)  # analog part
-            + Ml[:, :, ry % 2] * analog * gain_bit  # ml
-            + alpha[:, :, ry % 2] * (analog * gain_bit) ** 2  # alpha
+            + Ml[:, :, ry % 2] * analog_x_gain_bit  # ml
+            + alpha[:, :, ry % 2] * analog_x_gain_bit * analog_x_gain_bit  # alpha
             + Md[:, :, ry % 2] * digital  # md
             + Oh[:, :, ry % 2] * gain_bit  # oh
             - Ot[:, :, ry % 2]  # ot
@@ -266,6 +271,7 @@ def _load_EMPAD2_datacube(
     scan_size=None,
     background_even=None,
     background_odd=None,
+    _tqdm_args={},
 ):
     # get file size
     filesize = os.path.getsize(filepath)
@@ -287,7 +293,7 @@ def _load_EMPAD2_datacube(
 
     # Call the correct calibration method, as determined by the calibration dict
     calibration_data["method"](
-        datacube, calibration_data, background_even, background_odd
+        datacube, calibration_data, background_even, background_odd, _tqdm_args
     )
 
     return datacube
