@@ -23,3 +23,12 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/sezelt/empad2"
 "Bug Tracker" = "https://github.com/sezelt/empad2/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+empad2 = ["calibration_data/*.h5"]

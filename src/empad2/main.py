@@ -3,8 +3,7 @@ import numpy as np
 import os
 from pathlib import Path
 import h5py
-from typing import Callable, Optional
-from typing_extensions import TypedDict
+from typing import Callable, Optional, TypedDict
 
 __all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS"]
 
