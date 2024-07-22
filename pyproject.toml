@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "empad2"
-version = "0.999"
+version = "0.9999"
 authors = [
   { name="Steven Zeltmann", email="steven.zeltmann@cornell.edu" },
 ]
@@ -16,7 +16,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "py4dstem >= 0.14.8",
+  "py4dstem >= 0.14.9",
   "numpy >= 1.19",
 ]
 

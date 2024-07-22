@@ -280,8 +280,10 @@ def _load_EMPAD2_datacube(
         Nxy = np.sqrt(N_patterns)
 
         # Check that it's reasonably square
-        assert np.abs(Nxy - np.round(Nxy)) <= 1e-10, "Did you do a non-square scan?"
-        Nx, Ny = Nxy, Nxy
+        if np.abs(Nxy - np.round(Nxy)) <= 1e-10:
+            Nx, Ny = Nxy, Nxy
+        else:
+            Nx, Ny = 1, N_patterns
     else:
         Nx, Ny = scan_size
 
