@@ -97,7 +97,7 @@ def combine_quadratic(
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-@cython.cdivision(True)
+# @cython.cdivision(True)
 def combine_quadratic_bgsub_debounce(
     float[:,:,:,::] datacube,
     float[:,:,::] Ml,
@@ -144,7 +144,7 @@ def combine_quadratic_bgsub_debounce(
         histogram = <cnp.npy_uint64 *>malloc((debounce_bins+2)*sizeof(cnp.npy_uint64))
 
         for ij in prange(shape[0] * shape[1]):
-            i = ij / shape[1]
+            i = ij // shape[1]
             j = ij % shape[1]
 
             # clear the histogram accumulator
@@ -178,16 +178,18 @@ def combine_quadratic_bgsub_debounce(
                     datacube[i,j,k,l] = combined_data
 
                     # accumulate histogram data
-                    # (the first and last index are for number out of the histogram range)
+                    # (the first and last index are for values out of the histogram range)
                     hist_idx = 1 + <int>floor((combined_data - <float>debounce_min) * accumulator_factor)
                     hist_idx = clip(hist_idx, 0, debounce_bins+1)
                     histogram[hist_idx] += 1
 
             # compute debounce offset from histogram (after clearing invalid bins)
+            # currently this is just finding the maximum, ideally this should do 
+            # some sort of fitting
             histogram[0] = 0
             histogram[debounce_bins + 1] = 0
             hist_idx = argmax(histogram, debounce_bins + 2)
-            debounce_correction = (<float>hist_idx - 0.5) * histogram_factor + debounce_min
+            debounce_correction = (<float>hist_idx - 0.5) * histogram_factor + <float>debounce_min
 
             debounce_values[i,j] = <cnp.npy_float32>debounce_correction
 
