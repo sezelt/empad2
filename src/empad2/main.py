@@ -97,7 +97,9 @@ def load_background(
     combination_kwargs={},
 ) -> BackgroundSet:
     bg_data = _load_EMPAD2_datacube(
-        filepath, calibration_data=calibration_data, scan_size=scan_size,
+        filepath,
+        calibration_data=calibration_data,
+        scan_size=scan_size,
         combination_kwargs=combination_kwargs,
     )
     background_odd = np.mean(bg_data.data[:, ::2], axis=(0, 1))
@@ -187,7 +189,9 @@ def _process_EMPAD2_datacube_linear(
     background = background_even is not None and background_odd is not None
 
     # apply calibration to each pattern
-    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args):
+    for rx, ry in py4DSTEM.tqdmnd(
+        datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args
+    ):
         data = datacube.data[rx, ry].view(np.uint32)
         analog = np.bitwise_and(data, 0x3FFF).astype(np.float32)
         digital = np.right_shift(np.bitwise_and(data, 0x3FFFC000), 14).astype(
@@ -224,19 +228,46 @@ def _process_EMPAD2_datacube_linear(
 def _process_EMPAD2_datacube_quadratic(
     datacube: py4DSTEM.DataCube,
     calibration_data: CalibrationSet,
-    background_even:Optional[np.ndarray]=None,
-    background_odd:Optional[np.ndarray]=None,
+    background_even: Optional[np.ndarray] = None,
+    background_odd: Optional[np.ndarray] = None,
     _tqdm_args={},
     combination_kwargs={},
 ) -> None:
 
     # calibration data are stored in the wrong order, should fix at the source...
-    Ml = np.stack([calibration_data['data']["Ml"][:,:,0], calibration_data['data']["Ml"][:,:,1]])
-    alpha = np.stack([calibration_data['data']["alpha"][:,:,0], calibration_data['data']["alpha"][:,:,1]])
-    Md = np.stack([calibration_data['data']["Md"][:,:,0], calibration_data['data']["Md"][:,:,1]])
-    Oh = np.stack([calibration_data['data']["Oh"][:,:,0], calibration_data['data']["Oh"][:,:,1]])
-    Ot = np.stack([calibration_data['data']["Ot"][:,:,0], calibration_data['data']["Ot"][:,:,1]])
-    FF = np.stack([calibration_data['data']["FFA"][:,:], calibration_data['data']["FFB"][:,:]])
+    Ml = np.stack(
+        [
+            calibration_data["data"]["Ml"][:, :, 0],
+            calibration_data["data"]["Ml"][:, :, 1],
+        ]
+    )
+    alpha = np.stack(
+        [
+            calibration_data["data"]["alpha"][:, :, 0],
+            calibration_data["data"]["alpha"][:, :, 1],
+        ]
+    )
+    Md = np.stack(
+        [
+            calibration_data["data"]["Md"][:, :, 0],
+            calibration_data["data"]["Md"][:, :, 1],
+        ]
+    )
+    Oh = np.stack(
+        [
+            calibration_data["data"]["Oh"][:, :, 0],
+            calibration_data["data"]["Oh"][:, :, 1],
+        ]
+    )
+    Ot = np.stack(
+        [
+            calibration_data["data"]["Ot"][:, :, 0],
+            calibration_data["data"]["Ot"][:, :, 1],
+        ]
+    )
+    FF = np.stack(
+        [calibration_data["data"]["FFA"][:, :], calibration_data["data"]["FFB"][:, :]]
+    )
 
     # If backgrounds are provided, do debounce and flatfield:
     if background_even is not None and background_odd is not None:
@@ -271,6 +302,7 @@ def _process_EMPAD2_datacube_quadratic(
             **combination_kwargs,
         )
 
+
 def _load_EMPAD2_datacube(
     filepath,
     calibration_data: CalibrationSet,
@@ -302,7 +334,12 @@ def _load_EMPAD2_datacube(
 
     # Call the correct calibration method, as determined by the calibration dict
     calibration_data["method"](
-        datacube, calibration_data, background_even, background_odd, _tqdm_args, combination_kwargs,
+        datacube,
+        calibration_data,
+        background_even,
+        background_odd,
+        _tqdm_args,
+        combination_kwargs,
     )
 
     return datacube
