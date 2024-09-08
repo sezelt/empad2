@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import h5py
 from typing import Callable, Optional, TypedDict
+from empad2.combine import combine_quadratic, combine_quadratic_bgsub_debounce
+from time import time
 
 __all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS"]
 
@@ -92,9 +94,11 @@ def load_background(
     filepath,
     calibration_data: CalibrationSet,
     scan_size=None,
+    combination_kwargs={},
 ) -> BackgroundSet:
     bg_data = _load_EMPAD2_datacube(
-        filepath, calibration_data=calibration_data, scan_size=scan_size
+        filepath, calibration_data=calibration_data, scan_size=scan_size,
+        combination_kwargs=combination_kwargs,
     )
     background_odd = np.mean(bg_data.data[:, ::2], axis=(0, 1))
     background_even = np.mean(bg_data.data[:, 1::2], axis=(0, 1))
@@ -107,6 +111,7 @@ def load_dataset(
     calibration_data: CalibrationSet,
     scan_size=None,
     _tqdm_args={},
+    combination_kwargs={},
 ) -> py4DSTEM.DataCube:
     return _load_EMPAD2_datacube(
         filepath,
@@ -115,6 +120,7 @@ def load_dataset(
         background_even=background["even"],
         background_odd=background["odd"],
         _tqdm_args=_tqdm_args,
+        combination_kwargs=combination_kwargs,
     )
 
 
@@ -163,6 +169,7 @@ def _process_EMPAD2_datacube_linear(
     background_even=None,
     background_odd=None,
     _tqdm_args={},
+    combination_kwargs={},
 ) -> None:
     # get calibration data from file
     _G1A = calibration_data["data"]["G1A"]
@@ -217,52 +224,52 @@ def _process_EMPAD2_datacube_linear(
 def _process_EMPAD2_datacube_quadratic(
     datacube: py4DSTEM.DataCube,
     calibration_data: CalibrationSet,
-    background_even=None,
-    background_odd=None,
+    background_even:Optional[np.ndarray]=None,
+    background_odd:Optional[np.ndarray]=None,
     _tqdm_args={},
+    combination_kwargs={},
 ) -> None:
-    Ml = calibration_data["data"]["Ml"]
-    alpha = calibration_data["data"]["alpha"]
-    Md = calibration_data["data"]["Md"]
-    Oh = calibration_data["data"]["Oh"]
-    Ot = calibration_data["data"]["Ot"]
-    _FFA = calibration_data["data"]["FFA"]
-    _FFB = calibration_data["data"]["FFB"]
 
-    # You might think that "even" indices are 0, 2, 4, etc...
-    # but you would be wrong, because the original code was
-    # written in MATLAB
-    background = background_even is not None and background_odd is not None
+    # calibration data are stored in the wrong order, should fix at the source...
+    Ml = np.stack([calibration_data['data']["Ml"][:,:,0], calibration_data['data']["Ml"][:,:,1]])
+    alpha = np.stack([calibration_data['data']["alpha"][:,:,0], calibration_data['data']["alpha"][:,:,1]])
+    Md = np.stack([calibration_data['data']["Md"][:,:,0], calibration_data['data']["Md"][:,:,1]])
+    Oh = np.stack([calibration_data['data']["Oh"][:,:,0], calibration_data['data']["Oh"][:,:,1]])
+    Ot = np.stack([calibration_data['data']["Ot"][:,:,0], calibration_data['data']["Ot"][:,:,1]])
+    FF = np.stack([calibration_data['data']["FFA"][:,:], calibration_data['data']["FFB"][:,:]])
 
-    # apply calibration to each pattern
-    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args):
-        data = datacube.data[rx, ry].view(np.uint32)
-        analog = np.bitwise_and(data, 0x3FFF).astype(np.float32)
-        digital = np.right_shift(np.bitwise_and(data, 0x3FFFC000), 14).astype(
-            np.float32
-        )
-        gain_bit = np.right_shift(np.bitwise_and(data, 0x80000000), 31)
+    # If backgrounds are provided, do debounce and flatfield:
+    if background_even is not None and background_odd is not None:
+        bkg = np.stack([background_odd, background_even])
 
-        analog_x_gain_bit = analog * gain_bit
-        datacube.data[rx, ry] = (
-            analog * (1 - gain_bit)  # analog part
-            + Ml[:, :, ry % 2] * analog_x_gain_bit  # ml
-            + alpha[:, :, ry % 2] * analog_x_gain_bit * analog_x_gain_bit  # alpha
-            + Md[:, :, ry % 2] * digital  # md
-            + Oh[:, :, ry % 2] * gain_bit  # oh
-            - Ot[:, :, ry % 2]  # ot
+        t0 = time()
+        debounce = combine_quadratic_bgsub_debounce(
+            datacube.data,
+            Ml,
+            alpha,
+            Md,
+            Oh,
+            Ot,
+            FF,
+            bkg,
+            **combination_kwargs,
         )
 
-        if background:
-            if ry % 2:
-                datacube.data[rx, ry] -= background_even
-                datacube.data[rx, ry] -= _debounce_frame(datacube.data[rx, ry])
-                datacube.data[rx, ry] *= _FFB
-            else:
-                datacube.data[rx, ry] -= background_odd
-                datacube.data[rx, ry] -= _debounce_frame(datacube.data[rx, ry])
-                datacube.data[rx, ry] *= _FFA
+        print(f"Combination: {np.product(datacube.Rshape)/(time()-t0):.0f} fps")
 
+        debounce = py4DSTEM.VirtualImage(debounce, name="Debounce correction")
+        datacube.attach(debounce)
+    # Otherwise, only do binary twiddling
+    else:
+        combine_quadratic(
+            datacube.data,
+            Ml,
+            alpha,
+            Md,
+            Oh,
+            Ot,
+            **combination_kwargs,
+        )
 
 def _load_EMPAD2_datacube(
     filepath,
@@ -271,6 +278,7 @@ def _load_EMPAD2_datacube(
     background_even=None,
     background_odd=None,
     _tqdm_args={},
+    combination_kwargs={},
 ):
     # get file size
     filesize = os.path.getsize(filepath)
@@ -294,7 +302,7 @@ def _load_EMPAD2_datacube(
 
     # Call the correct calibration method, as determined by the calibration dict
     calibration_data["method"](
-        datacube, calibration_data, background_even, background_odd, _tqdm_args
+        datacube, calibration_data, background_even, background_odd, _tqdm_args, combination_kwargs,
     )
 
     return datacube
