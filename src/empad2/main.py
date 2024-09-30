@@ -10,7 +10,7 @@ from time import time
 __all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS"]
 
 CalibrationSet = TypedDict(
-    "CalibrationSet", {"data": dict[str, np.ndarray], "method": Callable}
+    "CalibrationSet", {"data": dict[str, np.ndarray], "method": Callable, "postprocess": Optional[Callable]}
 )
 BackgroundSet = TypedDict("BackgroundSet", {"even": np.ndarray, "odd": np.ndarray})
 
@@ -29,6 +29,7 @@ SENSORS = {
         / "calibration_data"
         / "andromeda-calibrations.h5",
         "method": "quadratic",
+        "post-process": "andromeda_dead_pixel",
         "dataset-names": ["Ml", "alpha", "Md", "Ot", "Oh", "FFA", "FFB"],
     },
 }
@@ -38,6 +39,7 @@ def load_calibration_data(
     sensor: Optional[str] = None,
     filepath: Optional[str | Path] = None,
     method: Optional[str] = None,
+    postprocess_method: Optional[str] = None,
 ) -> CalibrationSet:
     """
     Import calibration data for the sensor. Can be called in two ways:
@@ -64,6 +66,10 @@ def load_calibration_data(
         "quadratic": ["Ml", "alpha", "Md", "Ot", "Oh", "FFA", "FFB"],
     }
 
+    postprocess_methods = {
+        "andromeda_dead_pixel": _andromeda_heal_dead_pixel,
+    }
+
     if sensor is not None:
         # load a bundled sensor
         sensor_name = sensor.lower()
@@ -71,7 +77,9 @@ def load_calibration_data(
             sensor_data = SENSORS[sensor_name]
             with h5py.File(sensor_data["data-path"]) as cal_file:
                 data = {k: np.array(cal_file[k]) for k in sensor_data["dataset-names"]}
-                cal_method = processing_methods[sensor_data["method"]]
+            cal_method = processing_methods[sensor_data["method"]]
+
+            postprocess = postprocess_methods.get(sensor_data["post-process"]) if "post-process" in sensor_data else None
 
         else:
             raise ValueError(
@@ -83,11 +91,12 @@ def load_calibration_data(
             data = {k: np.array(cal_file[k]) for k in _constant_names[method]}
 
         cal_method = processing_methods[method]
+        postprocess = postprocess_methods.get(postprocess_method) if postprocess_method else None
 
     else:
         raise ValueError("Either sensor name or path and method must be specified.")
 
-    return {"data": data, "method": cal_method}
+    return {"data": data, "method": cal_method, "postprocess":postprocess}
 
 
 def load_background(
@@ -303,6 +312,14 @@ def _process_EMPAD2_datacube_quadratic(
         )
 
 
+def _andromeda_heal_dead_pixel(dataset: py4DSTEM.DataCube):
+    """
+    Heal the dead pixel at 86,90 on the Andromeda sensor
+    """
+    dataset.data[:,:,85,90] /= 2.0
+    dataset.data[:,:,86,90] = dataset.data[:,:,85,90]
+
+
 def _load_EMPAD2_datacube(
     filepath,
     calibration_data: CalibrationSet,
@@ -341,5 +358,9 @@ def _load_EMPAD2_datacube(
         _tqdm_args,
         combination_kwargs,
     )
+
+    # only postprocess if this is being loaded with background subtraction:
+    if background_even is not None and background_odd is not None and calibration_data['postprocess']:
+        calibration_data['postprocess'](datacube)
 
     return datacube
