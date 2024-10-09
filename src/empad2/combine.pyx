@@ -89,7 +89,7 @@ cdef float fit_histogram_peak(
 ) nogil:
 
     cdef int status, N_coords, N, NRHS
-    cdef char trans = 'N'
+    cdef char trans = b'N'
     N_coords = (fit_window * 2) + 1
     N = 3
     NRHS = 1
