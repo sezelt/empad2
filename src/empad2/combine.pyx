@@ -13,6 +13,7 @@ from cython.cimports.libc.limits import INT_MIN
 import numpy as np
 cimport numpy as cnp
 from scipy.linalg.cython_lapack cimport sgels
+cimport openmp
 
 
 # extra size for work array used in sgels
@@ -209,6 +210,7 @@ def combine_quadratic_bgsub_debounce(
     const int debounce_bins = 420,
     const int fit_window = 5,
     const bint polyfit_histogram_peak = False,
+    num_threads = None,
 ):
     '''
     Combine using quadratic method, with background subtraction and debouncing.
@@ -241,9 +243,11 @@ def combine_quadratic_bgsub_debounce(
     histogram_factor = (<float>debounce_max - <float>debounce_min) / <float>debounce_bins
     cdef int hist_idx, h
 
+    cdef int NUM_THREADS = <int>num_threads if num_threads is not None else openmp.omp_get_max_threads()
+
     # loop is parallelized across all patterns, with the first two
     # indices rolled for better division of labor
-    with nogil, parallel():
+    with nogil, parallel(num_threads=NUM_THREADS):
         # allocate scratch for histogram accumulation in each thread
         histogram = <cnp.npy_uint64 *>malloc((debounce_bins+2)*sizeof(cnp.npy_uint64))
 
