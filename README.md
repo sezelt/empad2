@@ -18,7 +18,7 @@ First, load the calibration files for your sensor (`"cryo-titan"` or `"andromeda
 ```python
 import empad2
 
-calibrations = empad2.load_calibrations("andromeda")
+calibrations = empad2.load_calibration_data("andromeda")
 
 # 
 ```
