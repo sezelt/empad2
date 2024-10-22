@@ -306,7 +306,7 @@ def _process_EMPAD2_datacube_quadratic(
             **combination_kwargs,
         )
 
-        print(f"Combination + debounce: {np.product(datacube.Rshape)/(time()-t0):.0f} fps")
+        print(f"Combination + debounce: {np.prod(datacube.Rshape)/(time()-t0):.0f} fps")
 
         debounce = py4DSTEM.VirtualImage(debounce, name="Debounce correction")
         datacube.attach(debounce)
@@ -322,7 +322,7 @@ def _process_EMPAD2_datacube_quadratic(
             Ot,
             **combination_kwargs,
         )
-        print(f"Combination: {np.product(datacube.Rshape)/(time()-t0):.0f} fps")
+        print(f"Combination: {np.prod(datacube.Rshape)/(time()-t0):.0f} fps")
 
 
 def _andromeda_heal_dead_pixel(dataset: py4DSTEM.DataCube):
