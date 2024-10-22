@@ -64,7 +64,7 @@ def load_calibration_data(
 
     if sensor is not None:
         # load a bundled sensor
-        sensor_name = sensor.lower()
+        sensor_name = sensor.lower().replace(" ","-")
         if sensor_name in SENSORS.keys():
             sensor_data = SENSORS[sensor_name]
             with h5py.File(sensor_data["data-path"]) as cal_file:
