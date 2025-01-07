@@ -19,7 +19,7 @@ class EMPAD2Plugin(QWidget):
     uses_plugin_menu = False
     display_name = "EMPAD2 Reader"
 
-    def __init__(self, parent, argv, *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         super().__init__()
         self.parent = parent
 
@@ -27,7 +27,8 @@ class EMPAD2Plugin(QWidget):
         self.empad2_background = None
 
         self.empad2_menu = QMenu("&EMPAD-G2", self)
-        parent.menu_bar.addMenu(self.empad2_menu)
+        # For historical reasons, keep the EMPAD2 menu in second position
+        parent.menu_bar.insertMenu(parent.menu_bar.actions()[1],self.empad2_menu)
 
         sensor_menu = self.empad2_menu.addMenu("&Sensor")
         calibration_action_group = QActionGroup(self)
