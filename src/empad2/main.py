@@ -64,7 +64,7 @@ def load_calibration_data(
 
     if sensor is not None:
         # load a bundled sensor
-        sensor_name = sensor.lower().replace(" ","-")
+        sensor_name = sensor.lower().replace(" ", "-")
         if sensor_name in SENSORS.keys():
             sensor_data = SENSORS[sensor_name]
             with h5py.File(sensor_data["data-path"]) as cal_file:
@@ -180,7 +180,9 @@ def _process_EMPAD2_datacube_linear(
     background = background_even is not None and background_odd is not None
 
     # apply calibration to each pattern
-    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args):
+    for rx, ry in py4DSTEM.tqdmnd(
+        datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args
+    ):
         data = datacube.data[rx, ry].view(np.uint32)
         analog = np.bitwise_and(data, 0x3FFF).astype(np.float32)
         digital = np.right_shift(np.bitwise_and(data, 0x3FFFC000), 14).astype(
@@ -235,7 +237,9 @@ def _process_EMPAD2_datacube_quadratic(
     background = background_even is not None and background_odd is not None
 
     # apply calibration to each pattern
-    for rx, ry in py4DSTEM.tqdmnd(datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args):
+    for rx, ry in py4DSTEM.tqdmnd(
+        datacube.data.shape[0], datacube.data.shape[1], **_tqdm_args
+    ):
         data = datacube.data[rx, ry].view(np.uint32)
         analog = np.bitwise_and(data, 0x3FFF).astype(np.float32)
         digital = np.right_shift(np.bitwise_and(data, 0x3FFFC000), 14).astype(
