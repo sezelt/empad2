@@ -86,7 +86,7 @@ class EMPAD2Plugin(QWidget):
                     dummy_data = True
 
             filename = raw_file_dialog(self.parent)
-            self.parent.datacube = empad2.load_dataset(
+            datacube = empad2.load_dataset(
                 filename,
                 self.empad2_background,
                 self.empad2_calibrations,
@@ -97,13 +97,10 @@ class EMPAD2Plugin(QWidget):
                 },
             )
 
+            self.parent.set_datacube(datacube, filename)
+
             if dummy_data:
                 self.empad2_background = None
-
-            self.parent.update_diffraction_space_view(reset=True)
-            self.parent.update_real_space_view(reset=True)
-
-            self.parent.setWindowTitle(filename)
 
         else:
             QMessageBox.warning(
