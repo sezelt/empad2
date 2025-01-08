@@ -20,7 +20,7 @@ class EMPAD2Plugin(QWidget):
     uses_plugin_menu = False
     display_name = "EMPAD2 Reader"
 
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, parent, **kwargs):
         super().__init__()
         self.parent = parent
 
