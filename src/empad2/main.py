@@ -7,7 +7,7 @@ from typing import Callable, Optional, TypedDict
 from empad2.combine import combine_quadratic, combine_quadratic_bgsub_debounce
 from time import time
 
-__all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS"]
+__all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS", "CalibrationSet", "BackgroundSet"]
 
 CalibrationSet = TypedDict(
     "CalibrationSet",
