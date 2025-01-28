@@ -5,7 +5,7 @@ from pathlib import Path
 import h5py
 from typing import Callable, Optional, TypedDict
 
-__all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS"]
+__all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS", "CalibrationSet", "BackgroundSet"]
 
 CalibrationSet = TypedDict(
     "CalibrationSet", {"data": dict[str, np.ndarray], "method": Callable}
