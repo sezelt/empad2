@@ -198,6 +198,7 @@ def combine_quadratic(
 # @cython.cdivision(True)
 def combine_quadratic_bgsub_debounce(
     float[:,:,:,::] datacube,
+    float[:,::] debounce_values,
     const float[:,:,::] Ml,
     const float[:,:,::] alpha,
     const float[:,:,::] Md,
@@ -217,8 +218,8 @@ def combine_quadratic_bgsub_debounce(
     `datacube` is modified in place
     '''
 
-    debounce_values_npy = np.zeros((datacube.shape[0], datacube.shape[1]), dtype=np.float32)
-    cdef cnp.npy_float32[:,::] debounce_values = debounce_values_npy
+    # debounce_values_npy = np.zeros((datacube.shape[0], datacube.shape[1]), dtype=np.float32)
+    # cdef cnp.npy_float32[:,::] debounce_values = debounce_values_npy
 
     # shape of the 4D array as a C array
     cdef Py_ssize_t shape[4]
@@ -342,4 +343,4 @@ def combine_quadratic_bgsub_debounce(
         free(hist_values)
         free(work_array)
 
-    return debounce_values_npy
+    # return debounce_values_npy

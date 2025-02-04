@@ -35,7 +35,7 @@ SENSORS = {
         / "andromeda-calibrations.h5",
         "method": "quadratic",
         "post-process": "andromeda_dead_pixel",
-        "dataset-names": ["Ml", "alpha", "Md", "Ot", "Oh", "FFA", "FFB"],
+        "dataset-names": ["Ml", "alpha", "Md", "Ot", "Oh", "FF"],
     },
 }
 
@@ -68,7 +68,7 @@ def load_calibration_data(
 
     _constant_names = {
         "linear": ["G1A", "G2A", "G1B", "G2B", "B2A", "B2B", "FFA", "FFB"],
-        "quadratic": ["Ml", "alpha", "Md", "Ot", "Oh", "FFA", "FFB"],
+        "quadratic": ["Ml", "alpha", "Md", "Ot", "Oh", "FF"],
     }
 
     postprocess_methods = {
@@ -254,73 +254,39 @@ def _process_EMPAD2_datacube_quadratic(
     combination_kwargs={},
 ) -> None:
 
-    # calibration data are stored in the wrong order, should fix at the source...
-    Ml = np.stack(
-        [
-            calibration_data["data"]["Ml"][:, :, 0],
-            calibration_data["data"]["Ml"][:, :, 1],
-        ]
-    )
-    alpha = np.stack(
-        [
-            calibration_data["data"]["alpha"][:, :, 0],
-            calibration_data["data"]["alpha"][:, :, 1],
-        ]
-    )
-    Md = np.stack(
-        [
-            calibration_data["data"]["Md"][:, :, 0],
-            calibration_data["data"]["Md"][:, :, 1],
-        ]
-    )
-    Oh = np.stack(
-        [
-            calibration_data["data"]["Oh"][:, :, 0],
-            calibration_data["data"]["Oh"][:, :, 1],
-        ]
-    )
-    Ot = np.stack(
-        [
-            calibration_data["data"]["Ot"][:, :, 0],
-            calibration_data["data"]["Ot"][:, :, 1],
-        ]
-    )
-    FF = np.stack(
-        [calibration_data["data"]["FFA"][:, :], calibration_data["data"]["FFB"][:, :]]
-    )
-
     # If backgrounds are provided, do debounce and flatfield:
     if background_even is not None and background_odd is not None:
         bkg = np.stack([background_odd, background_even])
 
+        debounce = py4DSTEM.VirtualImage(np.zeros(datacube.Rshape, np.float32), name="Debounce correction")
+        datacube.attach(debounce)
+
         t0 = time()
-        debounce = combine_quadratic_bgsub_debounce(
+        combine_quadratic_bgsub_debounce(
             datacube.data,
-            Ml,
-            alpha,
-            Md,
-            Oh,
-            Ot,
-            FF,
+            debounce.data,
+            calibration_data['data']["Ml"],
+            calibration_data['data']["alpha"],
+            calibration_data['data']["Md"],
+            calibration_data['data']["Oh"],
+            calibration_data['data']["Ot"],
+            calibration_data['data']["FF"],
             bkg,
             **combination_kwargs,
         )
 
         print(f"Combination + debounce: {np.prod(datacube.Rshape)/(time()-t0):.0f} fps")
 
-        debounce = py4DSTEM.VirtualImage(debounce, name="Debounce correction")
-        datacube.attach(debounce)
     # Otherwise, only do binary twiddling
     else:
         t0 = time()
         combine_quadratic(
             datacube.data,
-            Ml,
-            alpha,
-            Md,
-            Oh,
-            Ot,
-            **combination_kwargs,
+            calibration_data['data']["Ml"],
+            calibration_data['data']["alpha"],
+            calibration_data['data']["Md"],
+            calibration_data['data']["Oh"],
+            calibration_data['data']["Ot"],
         )
         print(f"Combination: {np.prod(datacube.Rshape)/(time()-t0):.0f} fps")
 
