@@ -148,50 +148,13 @@ def load_dataset(
 
 ##############################################################
 
-# Constant data used in debouncing
-binwidth = 10
-histogram_bins, binwidth = np.linspace(
-    -200 - binwidth // 2, 220 - binwidth // 2, num=420 // binwidth + 1, retstep=True
-)
-# get coordinates for doing polynomial fit
-bin_centers = (histogram_bins[:-1] + histogram_bins[1:]) / 2.0
-bin_centers_sq = bin_centers**2
-fit_coords = np.stack((np.ones_like(bin_centers), bin_centers, bin_centers_sq), axis=1)
-
-
-def _debounce_frame(frame, fit_range=5):
-    hist, _ = np.histogram(frame.flat, bins=histogram_bins)
-    hist_peak = np.argmax(hist)
-
-    if hist_peak < fit_range or hist_peak > len(hist) - fit_range - 1:
-        return 0.0
-
-    polyfit = np.linalg.lstsq(
-        fit_coords[hist_peak - fit_range : hist_peak + fit_range],
-        hist[hist_peak - fit_range : hist_peak + fit_range],
-        rcond=None,
-    )[0]
-
-    polymax = -polyfit[1] / 2 / polyfit[2]
-
-    # make sure the peak is inside the fit range, else return 0.0
-    return (
-        polymax
-        if (
-            polymax > bin_centers[hist_peak - fit_range]
-            and polymax < bin_centers[hist_peak + fit_range]
-        )
-        else 0.0
-    )
-
-
 def _process_EMPAD2_datacube_linear(
     datacube: py4DSTEM.DataCube,
     calibration_data: CalibrationSet,
     background_even=None,
     background_odd=None,
     _tqdm_args={},
-    combination_kwargs={},
+    combination_kwargs:dict={},
 ) -> None:
     # get calibration data from file
     _G1A = calibration_data["data"]["G1A"]
@@ -207,6 +170,47 @@ def _process_EMPAD2_datacube_linear(
     # but you would be wrong, because the original code was
     # written in MATLAB
     background = background_even is not None and background_odd is not None
+
+    if background:
+        debounce = py4DSTEM.VirtualImage(np.zeros(datacube.Rshape, np.float32), name="Debounce correction")
+        datacube.attach(debounce)
+
+        # Constant data used in debouncing
+        binwidth = combination_kwargs.get("debounce_binwidth", 10)
+        hist_range = combination_kwargs.get("debounce_fit_range",(-200, 220))
+        histogram_bins, binwidth = np.linspace(
+            hist_range[0] - binwidth // 2, hist_range[1] - binwidth // 2, num=(hist_range[1] - hist_range[0]) // binwidth + 1, retstep=True
+        )
+        # get coordinates for doing polynomial fit
+        bin_centers = (histogram_bins[:-1] + histogram_bins[1:]) / 2.0
+        bin_centers_sq = bin_centers**2
+        fit_coords = np.stack((np.ones_like(bin_centers), bin_centers, bin_centers_sq), axis=1)
+
+
+        def _debounce_frame(frame, fit_range=5):
+            hist, _ = np.histogram(frame.flat, bins=histogram_bins)
+            hist_peak = np.argmax(hist)
+
+            if hist_peak < fit_range or hist_peak > len(hist) - fit_range - 1:
+                return 0.0
+
+            polyfit = np.linalg.lstsq(
+                fit_coords[hist_peak - fit_range : hist_peak + fit_range],
+                hist[hist_peak - fit_range : hist_peak + fit_range],
+                rcond=None,
+            )[0]
+
+            polymax = -polyfit[1] / 2 / polyfit[2]
+
+            # make sure the peak is inside the fit range, else return 0.0
+            return (
+                polymax
+                if (
+                    polymax > bin_centers[hist_peak - fit_range]
+                    and polymax < bin_centers[hist_peak + fit_range]
+                )
+                else 0.0
+            )
 
     # apply calibration to each pattern
     for rx, ry in py4DSTEM.tqdmnd(
@@ -237,12 +241,13 @@ def _process_EMPAD2_datacube_linear(
         if background:
             if ry % 2:
                 datacube.data[rx, ry] -= background_even
-                datacube.data[rx, ry] -= _debounce_frame(datacube.data[rx, ry])
+                datacube.data[rx, ry] -= (db := _debounce_frame(datacube.data[rx, ry]))
                 datacube.data[rx, ry] *= _FFB
             else:
                 datacube.data[rx, ry] -= background_odd
-                datacube.data[rx, ry] -= _debounce_frame(datacube.data[rx, ry])
+                datacube.data[rx, ry] -= (db := _debounce_frame(datacube.data[rx, ry]))
                 datacube.data[rx, ry] *= _FFA
+            debounce.data[rx,ry] = db
 
 
 def _process_EMPAD2_datacube_quadratic(

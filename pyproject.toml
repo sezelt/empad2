@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "empad2"
-version = "2.1"
+version = "2.2"
 authors = [
   { name="Steven Zeltmann", email="steven.zeltmann@cornell.edu" },
 ]
