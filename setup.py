@@ -19,7 +19,8 @@ elif platform.system() == "Darwin":
     # extra_link_args.append(
     #     "-Wl,-rpath," + glob("/usr/local/Cellar/llvm/*/lib/clang/*/include/")[0]
     # )
-    extra_link_args.append("-Wl,-rpath," + glob("/usr/local/opt/gcc/lib/gcc/9/")[0])
+    brew_prefix = os.popen("brew --prefix").read().strip()
+    extra_link_args.append("-Wl,-rpath," + brew_prefix + "/gcc/lib/gcc/current/")
     # extra_link_args.append("-L/usr/local/opt/gcc/lib/gcc/9/")
 
     # Previously, I used Homebrew-installed gcc...
@@ -29,7 +30,7 @@ elif platform.system() == "Darwin":
     # LLVM Clang seems to work correctly!
     # If CC and LDSHARED are not set in the envoronment, try to find Homebrew LLVM clang...
     if "CC" not in os.environ:
-        os.environ["CC"] = glob("/usr/local/Cellar/llvm/9*/bin/clang")[0]
+        os.environ["CC"] = glob(brew_prefix + "/Cellar/llvm/*/bin/clang")[0]
     # if "LDSHARED" not in os.environ:
     #     os.environ["LDSHARED"] = (
     #         glob("/usr/local/Cellar/llvm/9*/bin/clang")[0] + " -bundle"

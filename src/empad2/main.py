@@ -7,7 +7,14 @@ from typing import Callable, Optional, TypedDict
 from empad2.combine import combine_quadratic, combine_quadratic_bgsub_debounce
 from time import time
 
-__all__ = ["load_calibration_data", "load_background", "load_dataset", "SENSORS", "CalibrationSet", "BackgroundSet"]
+__all__ = [
+    "load_calibration_data",
+    "load_background",
+    "load_dataset",
+    "SENSORS",
+    "CalibrationSet",
+    "BackgroundSet",
+]
 
 CalibrationSet = TypedDict(
     "CalibrationSet",
@@ -263,19 +270,21 @@ def _process_EMPAD2_datacube_quadratic(
     if background_even is not None and background_odd is not None:
         bkg = np.stack([background_odd, background_even])
 
-        debounce = py4DSTEM.VirtualImage(np.zeros(datacube.Rshape, np.float32), name="Debounce correction")
+        debounce = py4DSTEM.VirtualImage(
+            np.zeros(datacube.Rshape, np.float32), name="Debounce correction"
+        )
         datacube.attach(debounce)
 
         t0 = time()
         combine_quadratic_bgsub_debounce(
             datacube.data,
             debounce.data,
-            calibration_data['data']["Ml"],
-            calibration_data['data']["alpha"],
-            calibration_data['data']["Md"],
-            calibration_data['data']["Oh"],
-            calibration_data['data']["Ot"],
-            calibration_data['data']["FF"],
+            calibration_data["data"]["Ml"],
+            calibration_data["data"]["alpha"],
+            calibration_data["data"]["Md"],
+            calibration_data["data"]["Oh"],
+            calibration_data["data"]["Ot"],
+            calibration_data["data"]["FF"],
             bkg,
             **combination_kwargs,
         )
@@ -287,11 +296,11 @@ def _process_EMPAD2_datacube_quadratic(
         t0 = time()
         combine_quadratic(
             datacube.data,
-            calibration_data['data']["Ml"],
-            calibration_data['data']["alpha"],
-            calibration_data['data']["Md"],
-            calibration_data['data']["Oh"],
-            calibration_data['data']["Ot"],
+            calibration_data["data"]["Ml"],
+            calibration_data["data"]["alpha"],
+            calibration_data["data"]["Md"],
+            calibration_data["data"]["Oh"],
+            calibration_data["data"]["Ot"],
         )
         print(f"Combination: {np.prod(datacube.Rshape)/(time()-t0):.0f} fps")
 
