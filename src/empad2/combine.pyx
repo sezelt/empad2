@@ -191,6 +191,69 @@ def combine_quadratic(
                 # datacube[i,j,k,l] = digital
                 # datacube[i,j,k,l] = gain_bit
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def combine_quadratic_bgsub(
+    float[:,:,:,::] datacube,
+    const float[:,:,::] Ml,
+    const float[:,:,::] alpha,
+    const float[:,:,::] Md,
+    const float[:,:,::] Oh,
+    const float[:,:,::] Ot,
+    const float[:,:,::] FF,
+    const float[:,:,::] background,
+):
+    '''
+    Combine using quadratic method
+    '''
+
+    # shape of the 4D array as a C array
+    cdef Py_ssize_t shape[4]
+    shape[:] = [datacube.shape[0], datacube.shape[1], datacube.shape[2], datacube.shape[3]]
+
+    # iteration variables
+    cdef Py_ssize_t i,j,k,l, ij
+
+    # working variables
+    cdef cnp.npy_uint32 data, analog_int, digital_int
+    cdef float analog, digital, gain_bit, analog_x_gain_bit
+    # cdef bool gain_bit
+
+    # loop is parallelized across all patterns, with the first two
+    # indices rolled for better division of labor
+    for ij in prange(shape[0] * shape[1], nogil=True):
+        i = ij / shape[1]
+        j = ij % shape[1]
+
+        # combine each pixel
+        for k in range(shape[2]):
+            for l in range(shape[3]):
+
+                data = (<cnp.npy_uint32 *>(&datacube[i,j,k,l]))[0] # view the data as a uint32 (?)
+                analog_int = data & <cnp.npy_uint32>0x3FFF
+                digital_int = (data & <cnp.npy_uint32>0x3FFFC000) >> 14
+
+                analog = <float>analog_int
+                digital = <float>digital_int
+                gain_bit = <float>((data & <cnp.npy_uint32>0x80000000) >> 31)
+
+                analog_x_gain_bit = analog * gain_bit # premultiply
+
+                datacube[i,j,k,l] = (
+                    analog * (1.0 - gain_bit) # analog part
+                    + Ml[j % 2, k,l] * analog_x_gain_bit  # ml
+                    + alpha[j % 2, k,l] * analog_x_gain_bit * analog_x_gain_bit  # alpha
+                    + Md[j % 2, k,l] * digital  # md
+                    + Oh[j % 2, k,l] * gain_bit  # oh
+                    - Ot[j % 2, k,l]  # ot
+                    - background[j % 2, k,l]
+                ) * FF[j % 2, k, l]
+
+                # things for debugging:
+                # datacube[i,j,k,l] = analog
+                # datacube[i,j,k,l] = digital
+                # datacube[i,j,k,l] = gain_bit
 
 
 @cython.boundscheck(False)
